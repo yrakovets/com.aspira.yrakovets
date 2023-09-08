@@ -6,97 +6,57 @@ import com.google.gson.stream.JsonReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class LeagueParser {
-    //TODO refactor with DRY principle
-    private final InputStream inputStream;
+public class LeagueParser extends AbstractParser {
 
     public LeagueParser(InputStream inputStream) {
-        this.inputStream = inputStream;
+        super(inputStream);
     }
 
     public EventContainer getEvents() {
-        EventContainer eventContainer = new EventContainer();
-
         try (InputStreamReader inputReader = new InputStreamReader(inputStream);
              JsonReader reader = new JsonReader(inputReader)) {
-            reader.beginObject();
-            while (reader.hasNext()) {
-                if ("events".equals(reader.nextName())) {
-                    eventContainer.setEvents(readEvents(reader));
-                } else {
-                    reader.skipValue();
-                }
-            }
-            reader.endObject();
+
+            Map<String, ReadingConsumer<EventContainer>> map = new HashMap<>();
+            map.put("events", (passedReader, container) -> container.setEvents(readEvents(passedReader)));
+
+            return readEntity(reader, EventContainer::new, map);
         } catch (IOException ignored) {
         }
-        return eventContainer;
+        return new EventContainer();
     }
 
     private List<Event> readEvents(JsonReader reader) throws IOException {
-        List<Event> events = new ArrayList<>();
-        reader.beginArray();
-        while (reader.hasNext()) {
-            Event event = new Event();
-            reader.beginObject();
-            while (reader.hasNext()) {
-                switch (reader.nextName()) {
-                    case "id" -> event.setId(reader.nextLong());
-                    case "name" -> event.setName(reader.nextString());
-                    case "kickoff" -> event.setKickoff(reader.nextLong());
-                    case "markets" -> event.setMarkets(readMarkets(reader));
-                    default -> reader.skipValue();
-                }
-            }
-            reader.endObject();
-            events.add(event);
-        }
-        reader.endArray();
-        return events;
+
+        Map<String, ReadingConsumer<Event>> map = new HashMap<>();
+        map.put("id", (passedReader, event) -> event.setId(reader.nextLong()));
+        map.put("name", (passedReader, event) -> event.setName(reader.nextString()));
+        map.put("kickoff", (passedReader, event) -> event.setKickoff(reader.nextLong()));
+        map.put("markets", (passedReader, event) -> event.setMarkets(readMarkets(reader)));
+
+        return readList(reader, Event::new, map);
     }
 
     private List<Market> readMarkets(JsonReader reader) throws IOException {
-        List<Market> markets = new ArrayList<>();
-        reader.beginArray();
-        while (reader.hasNext()) {
-            Market market = new Market();
-            reader.beginObject();
-            while (reader.hasNext()) {
-                switch (reader.nextName()) {
-                    case "id" -> market.setId(reader.nextLong());
-                    case "name" -> market.setName(reader.nextString());
-                    case "runners" -> market.setRunners(readRunners(reader));
-                    default -> reader.skipValue();
-                }
-            }
-            reader.endObject();
-            markets.add(market);
-        }
-        reader.endArray();
-        return markets;
+
+        Map<String, ReadingConsumer<Market>> map = new HashMap<>();
+        map.put("id", (passedReader, market) -> market.setId(reader.nextLong()));
+        map.put("name", (passedReader, market) -> market.setName(reader.nextString()));
+        map.put("runners", (passedReader, market) -> market.setRunners(readRunners(reader)));
+
+        return readList(reader, Market::new, map);
     }
 
     private List<Runner> readRunners(JsonReader reader) throws IOException {
-        List<Runner> runners = new ArrayList<>();
-        reader.beginArray();
-        while (reader.hasNext()) {
-            Runner runner = new Runner();
-            reader.beginObject();
-            while (reader.hasNext()) {
-                switch (reader.nextName()) {
-                    case "id" -> runner.setId(reader.nextLong());
-                    case "name" -> runner.setName(reader.nextString());
-                    case "price" -> runner.setPrice(reader.nextDouble());
-                    default -> reader.skipValue();
-                }
-            }
-            reader.endObject();
-            runners.add(runner);
-        }
-        reader.endArray();
-        return runners;
+
+        Map<String, ReadingConsumer<Runner>> map = new HashMap<>();
+        map.put("id", (passedReader, runner) -> runner.setId(reader.nextLong()));
+        map.put("name", (passedReader, runner) -> runner.setName(reader.nextString()));
+        map.put("price", (passedReader, runner) -> runner.setPrice(reader.nextDouble()));
+
+        return readList(reader, Runner::new, map);
     }
 }

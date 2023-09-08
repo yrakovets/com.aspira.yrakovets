@@ -9,90 +9,48 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class SportParser {
-
-    //TODO refactor with DRY principle
-
-
-    private final InputStream inputStream;
+public class SportParser extends AbstractParser {
 
     public SportParser(InputStream inputStream) {
-        this.inputStream = inputStream;
+        super(inputStream);
     }
 
     public List<Sport> getSportList() {
-        List<Sport> sports = new ArrayList<>();
         try (InputStreamReader inputReader = new InputStreamReader(inputStream);
                 JsonReader reader = new JsonReader(inputReader)) {
-            reader.beginArray();
-            while (reader.hasNext()) {
-                Sport sport = new Sport();
-                reader.beginObject();
-                while (reader.hasNext()) {
-                    switch (reader.nextName()) {
-                        case "id" -> sport.setId(reader.nextLong());
-                        case "name" -> sport.setName(reader.nextString());
-                        case "regions" -> sport.setRegions(readRegions(reader));
-                        default -> reader.skipValue();
-                    }
-                }
-                reader.endObject();
-                sports.add(sport);
-            }
-            reader.endArray();
+
+            Map<String, ReadingConsumer<Sport>> map = new HashMap<>();
+
+            map.put("id", (passedReader, sport) -> sport.setId(reader.nextLong()));
+            map.put("name", (passedReader, sport) -> sport.setName(reader.nextString()));
+            map.put("regions", (passedReader, sport) -> sport.setRegions(readRegions(reader)));
+
+            return readList(reader, Sport::new, map);
         } catch (IOException ignored) {
         }
-        return sports;
+        return new ArrayList<>();
     }
 
     private List<Region> readRegions(JsonReader reader) throws IOException {
-        ArrayList<Region> regions = new ArrayList<>();
-        reader.beginArray();
-        while (reader.hasNext()) {
-            regions.add(readRegion(reader));
-        }
-        reader.endArray();
-        return regions;
-    }
 
-    private Region readRegion(JsonReader reader) throws IOException {
-        Region region = new Region();
-        reader.beginObject();
-        while (reader.hasNext()) {
-            switch (reader.nextName()) {
-                case "id" -> region.setId(reader.nextLong());
-                case "leagues" -> region.setLeagues(readLeagues(reader));
-                default -> reader.skipValue();
-            }
-        }
-        reader.endObject();
-        return region;
+        Map<String, ReadingConsumer<Region>> map = new HashMap<>();
+        map.put("id", (passedReader, region) -> region.setId(reader.nextLong()));
+        map.put("leagues", (passedReader, region) -> region.setLeagues(readLeagues(reader)));
+
+        return readList(reader, Region::new, map);
     }
 
     private List<League> readLeagues(JsonReader reader) throws IOException {
-        ArrayList<League> leagues = new ArrayList<>();
-        reader.beginArray();
-        while (reader.hasNext()) {
-            leagues.add(readLeague(reader));
-        }
-        reader.endArray();
-        return leagues;
-    }
 
-    private League readLeague(JsonReader reader) throws IOException {
-        League league = new League();
-        reader.beginObject();
-        while (reader.hasNext()) {
-            switch (reader.nextName()) {
-                case "id" -> league.setId(reader.nextLong());
-                case "name" -> league.setName(reader.nextString());
-                case "top" -> league.setTop(reader.nextBoolean());
-                default -> reader.skipValue();
-            }
-        }
-        reader.endObject();
-        return league;
+        Map<String, ReadingConsumer<League>> map = new HashMap<>();
+        map.put("id", (passedReader, league) -> league.setId(reader.nextLong()));
+        map.put("name", (passedReader, league) -> league.setName(reader.nextString()));
+        map.put("top", (passedReader, league) -> league.setTop(reader.nextBoolean()));
+
+        return readList(reader, League::new, map);
     }
 }
